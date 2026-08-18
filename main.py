@@ -7,7 +7,7 @@ from fastapi.security import api_key
 from pydantic import BaseModel
 
 
-from starlette.responses import FileResponse
+from starlette.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 import os
 import json
@@ -207,6 +207,12 @@ def delete_session(session_id: str):
     if os.path.exists(session_file):
         os.remove(session_file)
     return ApiResponse(code=200, message="删除会话信息成功", data=None)
+
+# 全局异常处理器
+@app.exception_handlers(Exception)
+def exception_handler(request, exc):
+    logging.error(f"Exception on {request.method} {request.url}", exc_info=exc)
+    return JSONResponse(content={"code": 500, "message": "Internal Server Error", "data":None})
 
 
 if __name__ == "__main__":
