@@ -162,6 +162,7 @@ def chat(request: ChatRequest) ->ApiResponse: #服务器端想接受前端传递
     print("<------AI大模型响应的数据",ai_response)
 
     #5.更新消息列表中的数据
+    messages.pop(0)
     messages.append({"role": "assistant", "content": ai_response})
     session_data["messages"] = messages
     print("<------更新后的会话数据",session_data)
