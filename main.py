@@ -11,6 +11,12 @@ from starlette.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 import os
 import json
+import logging
+
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(filename)s - %(lineno)d - %(message)s"
+)
+
 
 #创建FastAPI实例
 app = FastAPI(title="猜谜游戏")
@@ -111,13 +117,13 @@ class ChatRequest(BaseModel):
 #定义路径操作函数
 @app.get("/")
 def root():
-    print("访问项目首页")
+    logging.info("访问项目首页")
     return FileResponse("static/index.html") #将文件封装到类中,构造一个对象返回,访问/时就会访问到这个文件
 
 #创建会话
 @app.post("/api/sessions")
 def create_session():
-    print("创建新会话")
+    logging.info("创建新会话")
     #1.生成会话的名字
     session_id = generate_session_id()
 
@@ -135,7 +141,7 @@ def create_session():
 #与AI交互
 @app.post("/api/chat")
 def chat(request: ChatRequest) ->ApiResponse: #服务器端想接受前端传递过来的json格式的数据,在函数声明request,类型为自己定义的ChatRequest
-    print(f"与ai交互:{request.session_id}:{request.message}")
+    logging.info(f"与ai交互:{request.session_id}:{request.message}")
 
     #1.加载json文件中的会话数据
     session_path = get_session_file_name(request.session_id)
@@ -149,7 +155,7 @@ def chat(request: ChatRequest) ->ApiResponse: #服务器端想接受前端传递
     messages.append({"role": "user", "content": request.message})
 
     #3.调用AI大模型DeepSeek
-    print("<-------请求的会话信息:",messages)
+    logging.info("<-------请求的会话信息:",messages)
     response = client.chat.completions.create(
         model="deepseek-chat",
         messages=messages,
@@ -159,13 +165,13 @@ def chat(request: ChatRequest) ->ApiResponse: #服务器端想接受前端传递
 
     #4.获取响应的数据
     ai_response = response.choices[0].message.content
-    print("<------AI大模型响应的数据",ai_response)
+    logging.info("<------AI大模型响应的数据",ai_response)
 
     #5.更新消息列表中的数据
     messages.pop(0)
     messages.append({"role": "assistant", "content": ai_response})
     session_data["messages"] = messages
-    print("<------更新后的会话数据",session_data)
+    logging.info("<------更新后的会话数据",session_data)
 
     #6.保存会话数据到json文件中
     with open(session_path, "w",encoding="utf-8") as f:
@@ -174,6 +180,33 @@ def chat(request: ChatRequest) ->ApiResponse: #服务器端想接受前端传递
     #7.返回数据
     return ApiResponse(code=200, message="请求成功", data=ai_response)
 
+#获取会话列表
+@app.get("/api/sessions")
+def get_sessions():
+    logging.info("获取会话列表")
+    session_files = os.listdir("sessions")
+    session_ids = [file.split(".")[0] for file in session_files]
+    session_ids.sort(reverse=True)
+    return ApiResponse(code=200, message="获取会话列表成功", data=session_ids)
+
+#获取指定的会话信息
+@app.get("/api/sessions/{session_id}")
+def get_session(session_id: str):
+    logging.info(f"获取会话信息:{session_id}")
+    session_path = get_session_file_name(session_id)
+    with open(session_path, "r",encoding="utf-8") as f:
+        session_data = json.load(f)
+    return ApiResponse(code=200, message="获取会话信息成功", data=session_data)
+
+#删除指定的会话信息
+@app.delete("/api/sessions/{session_id}")
+
+def delete_session(session_id: str):
+    logging.info(f"删除会话信息:{session_id}")
+    session_file = get_session_file_name(session_id)
+    if os.path.exists(session_file):
+        os.remove(session_file)
+    return ApiResponse(code=200, message="删除会话信息成功", data=None)
 
 
 if __name__ == "__main__":
