@@ -25,6 +25,7 @@ if not os.path.exists("sessions"):
 def generate_session_id():
     return datetime.now().strftime("%Y%m%d%H%M%S")
 
+#根据session_id获取文件的名字
 def get_session_file_name(session_id):
     return f"sessions/{session_id}.json"
 
@@ -93,7 +94,7 @@ SYSTEM_PROMPT = """
 - 「两座山」= 出
 - 「三日又重逢」= 晶
 """
-
+#创建与AI大模型交互的客户端对象
 client = OpenAI(api_key=os.environ.get('DEEPSEEK_API_KEY'), base_url="https://api.deepseek.com")
 
 #定义返回的数据模型,为了方便前后端通道,通常都订好了
@@ -119,6 +120,7 @@ def create_session():
     print("创建新会话")
     #1.生成会话的名字
     session_id = generate_session_id()
+
     #2.组装会话信息,保存到文件中
     session_data = {
         "current_session":session_id,
@@ -150,7 +152,7 @@ def chat(request: ChatRequest) ->ApiResponse: #服务器端想接受前端传递
     print("<-------请求的会话信息:",messages)
     response = client.chat.completions.create(
         model="deepseek-chat",
-        messages=message,
+        messages=messages,
         stream = False,
         temperature=1.5
     )
@@ -169,7 +171,7 @@ def chat(request: ChatRequest) ->ApiResponse: #服务器端想接受前端传递
         json.dump(session_data, f,ensure_ascii= False,indent=2)
 
     #7.返回数据
-    return ApiResponse(code=200, message="请求成功", data="AI返回的数据")
+    return ApiResponse(code=200, message="请求成功", data=ai_response)
 
 
 
